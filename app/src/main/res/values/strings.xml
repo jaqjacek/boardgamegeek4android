@@ -627,6 +627,7 @@
 	<string name="play_stat_play_count_incomplete">Incomplete plays (excluded from stats)</string>
 	<string name="play_stat_hours_played">Hours played</string>
 	<string name="play_stat_months_played">Months played</string>
+	<string name="play_stat_total_player_hours_played">Total Player Hours played</string>
 	<string name="play_stat_play_rate">Plays per month</string>
 	<string name="play_stat_accuracy">These stats don\'t include %s.</string>
 	<string name="play_stat_collection_status">These stats work much better if you sync both your owned and played games.</string>

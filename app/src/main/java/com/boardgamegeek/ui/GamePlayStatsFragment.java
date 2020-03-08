@@ -376,6 +376,8 @@ public class GamePlayStatsFragment extends Fragment implements LoaderManager.Loa
 		playTimeView.setLabel(R.string.play_stat_hours_played);
 		playTimeView.setValue((int) stats.getHoursPlayed());
 
+		addPlayStatMinutes(playTimeTable,stats.getPlayerHoursPlayed(), R.string.play_stat_total_player_hours_played);
+
 		int average = stats.getAveragePlayTime();
 		if (average > 0) {
 			addPlayStatMinutes(playTimeTable, average, R.string.play_stat_average_play_time);
@@ -698,6 +700,7 @@ public class GamePlayStatsFragment extends Fragment implements LoaderManager.Loa
 		private Map<Integer, Integer> playCountPerPlayerCount;
 		private int realMinutesPlayed;
 		private int estimatedMinutesPlayed;
+		private int playerHoursPlayed;
 		private int numberOfWinnableGames;
 		private double scoreSum;
 		private int scoreCount;
@@ -741,6 +744,7 @@ public class GamePlayStatsFragment extends Fragment implements LoaderManager.Loa
 
 			realMinutesPlayed = 0;
 			estimatedMinutesPlayed = 0;
+			playerHoursPlayed = 0;
 
 			scoreSum = 0;
 			scoreCount = 0;
@@ -786,6 +790,7 @@ public class GamePlayStatsFragment extends Fragment implements LoaderManager.Loa
 				if (play.length == 0) {
 					estimatedMinutesPlayed += playingTime * play.quantity;
 				} else {
+					playerHoursPlayed += play.length* play.playerCount;
 					realMinutesPlayed += play.length;
 					playCountWithLength += play.quantity;
 					playerCountSumWithLength += play.playerCount * play.quantity;
@@ -891,6 +896,10 @@ public class GamePlayStatsFragment extends Fragment implements LoaderManager.Loa
 
 		public double getHoursPlayed() {
 			return (realMinutesPlayed + estimatedMinutesPlayed) / 60;
+		}
+
+		public int getPlayerHoursPlayed() {
+			return playerHoursPlayed;
 		}
 
 		/* plays per month, only counting the active period) */
