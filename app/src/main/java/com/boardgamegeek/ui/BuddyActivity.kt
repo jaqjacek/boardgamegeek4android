@@ -5,17 +5,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.linkToBgg
 import com.boardgamegeek.extensions.showAndSurvive
 import com.boardgamegeek.ui.dialog.EditUsernameDialogFragment
 import com.boardgamegeek.ui.viewmodel.BuddyViewModel
-import com.crashlytics.android.answers.Answers
-import com.crashlytics.android.answers.ContentViewEvent
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 import org.jetbrains.anko.clearTop
 import org.jetbrains.anko.design.longSnackbar
 import org.jetbrains.anko.intentFor
@@ -26,9 +26,7 @@ class BuddyActivity : SimpleSinglePaneActivity() {
     private var username: String? = null
     private var snackbar: Snackbar? = null
 
-    private val viewModel: BuddyViewModel by lazy {
-        ViewModelProviders.of(this).get(BuddyViewModel::class.java)
-    }
+    private val viewModel by viewModels<BuddyViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,10 +34,11 @@ class BuddyActivity : SimpleSinglePaneActivity() {
         setSubtitle()
 
         if (savedInstanceState == null) {
-            Answers.getInstance().logContentView(ContentViewEvent()
-                    .putContentType("Buddy")
-                    .putContentId(username)
-                    .putContentName(name))
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM) {
+                param(FirebaseAnalytics.Param.CONTENT_TYPE, "Buddy")
+                param(FirebaseAnalytics.Param.ITEM_ID, username.orEmpty())
+                param(FirebaseAnalytics.Param.ITEM_NAME, name.orEmpty())
+            }
         }
 
         if (username != null && username?.isNotBlank() == true) {
@@ -55,13 +54,11 @@ class BuddyActivity : SimpleSinglePaneActivity() {
                     name = it.first
                     intent.putExtra(KEY_PLAYER_NAME, name)
                     setSubtitle()
-                    recreateFragment()
                 }
                 it.second == BuddyViewModel.TYPE_USER && it.first != username -> {
                     username = it.first
                     intent.putExtra(KEY_USERNAME, username)
                     setSubtitle()
-                    recreateFragment()
                 }
             }
         })
@@ -79,7 +76,7 @@ class BuddyActivity : SimpleSinglePaneActivity() {
     }
 
     override fun onCreatePane(intent: Intent): Fragment {
-        return BuddyFragment.newInstance(username, name)
+        return BuddyFragment()
     }
 
     override val optionsMenuId = R.menu.buddy
@@ -97,7 +94,7 @@ class BuddyActivity : SimpleSinglePaneActivity() {
                 return true
             }
             R.id.add_username -> {
-                showAndSurvive(EditUsernameDialogFragment.newInstance())
+                showAndSurvive(EditUsernameDialogFragment())
                 return true
             }
         }
@@ -120,22 +117,18 @@ class BuddyActivity : SimpleSinglePaneActivity() {
         private const val KEY_USERNAME = "BUDDY_NAME"
         private const val KEY_PLAYER_NAME = "PLAYER_NAME"
 
-        @JvmStatic
         fun start(context: Context, username: String, playerName: String) {
             createIntent(context, username, playerName)?.let {
                 context.startActivity(it)
             }
         }
 
-        @JvmStatic
-        @JvmOverloads
         fun startUp(context: Context, username: String?, playerName: String? = null) {
             createIntent(context, username, playerName)?.let {
                 context.startActivity(it.clearTop())
             }
         }
 
-        @JvmStatic
         fun createIntent(context: Context, username: String?, playerName: String?): Intent? {
             if (username.isNullOrBlank() && playerName.isNullOrBlank()) {
                 Timber.w("Unable to create a BuddyActivity intent - missing both a username and a player name")

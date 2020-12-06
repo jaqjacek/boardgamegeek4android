@@ -4,13 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
 import com.boardgamegeek.provider.BggContract
 import com.boardgamegeek.ui.viewmodel.GameViewModel
 import com.boardgamegeek.ui.viewmodel.GameViewModel.ProducerType
-import com.crashlytics.android.answers.Answers
-import com.crashlytics.android.answers.ContentViewEvent
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 import org.jetbrains.anko.startActivity
 
 class GameDetailActivity : SimpleSinglePaneActivity() {
@@ -19,9 +19,7 @@ class GameDetailActivity : SimpleSinglePaneActivity() {
     private var gameName: String = ""
     private var type: ProducerType = ProducerType.UNKNOWN
 
-    private val viewModel: GameViewModel by lazy {
-        ViewModelProviders.of(this).get(GameViewModel::class.java)
-    }
+    private val viewModel by viewModels<GameViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,9 +28,11 @@ class GameDetailActivity : SimpleSinglePaneActivity() {
         supportActionBar?.subtitle = title
 
         if (savedInstanceState == null) {
-            Answers.getInstance().logContentView(ContentViewEvent()
-                    .putContentType("GameDetail")
-                    .putContentName(title))
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM_LIST) {
+                param(FirebaseAnalytics.Param.CONTENT_TYPE, "GameDetail$title")
+                param(FirebaseAnalytics.Param.ITEM_ID, gameId.toString())
+                param(FirebaseAnalytics.Param.ITEM_NAME, gameName)
+            }
         }
 
         viewModel.setId(gameId)

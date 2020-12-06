@@ -3,26 +3,23 @@ package com.boardgamegeek.ui.dialog
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.os.Bundle
-import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.requestFocus
 import com.boardgamegeek.extensions.setAndSelectExistingText
 import com.boardgamegeek.ui.viewmodel.BuddyViewModel
 import kotlinx.android.synthetic.main.dialog_edit_nickname.*
-import org.jetbrains.anko.support.v4.act
+import org.jetbrains.anko.support.v4.withArguments
 
 class UpdateBuddyNicknameDialogFragment : DialogFragment() {
     lateinit var layout: View
 
-    private val viewModel: BuddyViewModel by lazy {
-        ViewModelProviders.of(act).get(BuddyViewModel::class.java)
-    }
+    private val viewModel by activityViewModels<BuddyViewModel>()
 
     @SuppressLint("InflateParams")
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -34,7 +31,8 @@ class UpdateBuddyNicknameDialogFragment : DialogFragment() {
                 .setTitle(R.string.title_edit_nickname)
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.ok) { _, _ ->
-                    viewModel.updateNickName(nicknameView.text.trim().toString(), changePlaysCheckBox.isChecked)
+                    val nickname = nicknameView.text?.toString()
+                    viewModel.updateNickName(nickname?.trim() ?: "", changePlaysCheckBox.isChecked)
                 }
                 .create().apply {
                     requestFocus(nicknameView)
@@ -47,19 +45,17 @@ class UpdateBuddyNicknameDialogFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         if (savedInstanceState == null) {
-            nicknameView.setAndSelectExistingText(arguments?.getString("NICKNAME"))
-            nicknameView.inputType = nicknameView.inputType or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            nicknameView.setAndSelectExistingText(arguments?.getString(KEY_NICKNAME))
         }
     }
 
     companion object {
-        @JvmStatic
+        private const val KEY_NICKNAME = "NICKNAME"
+
         fun newInstance(nickname: String): UpdateBuddyNicknameDialogFragment {
-            val fragment = UpdateBuddyNicknameDialogFragment()
-            fragment.arguments = Bundle().apply {
-                putString("NICKNAME", nickname)
-            }
-            return fragment
+            return UpdateBuddyNicknameDialogFragment().withArguments(
+                    KEY_NICKNAME to nickname
+            )
         }
     }
 }

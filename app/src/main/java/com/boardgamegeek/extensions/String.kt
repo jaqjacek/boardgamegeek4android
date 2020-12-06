@@ -54,8 +54,8 @@ fun String.asRankDescription(context: Context, type: String = BggService.RANK_TY
 }
 
 @JvmOverloads
-fun String.toMillis(format: DateFormat, defaultMillis: Long = 0L): Long {
-    return if (isBlank()) {
+fun String?.toMillis(format: DateFormat, defaultMillis: Long = 0L): Long {
+    return if (isNullOrBlank()) {
         defaultMillis
     } else {
         try {
@@ -112,6 +112,17 @@ fun String?.ensureHttpsScheme(): String? {
         this == "" -> null
         startsWith("//") -> "https:${this}"
         else -> this
+    }
+}
+
+private const val TRUNCATED_TEXT_SUFFIX = ".."
+
+fun String.truncate(length: Int): String {
+    require(length > 0)
+    return when {
+        this.length <= length -> this
+        length > TRUNCATED_TEXT_SUFFIX.length -> this.take(length - TRUNCATED_TEXT_SUFFIX.length) + TRUNCATED_TEXT_SUFFIX
+        else -> this.take(length)
     }
 }
 

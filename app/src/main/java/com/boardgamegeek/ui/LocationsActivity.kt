@@ -4,19 +4,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.setActionBarCount
 import com.boardgamegeek.ui.viewmodel.LocationsViewModel
-import com.crashlytics.android.answers.Answers
-import com.crashlytics.android.answers.ContentViewEvent
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 
 class LocationsActivity : SimpleSinglePaneActivity() {
-    private val viewModel: LocationsViewModel by lazy {
-        ViewModelProviders.of(this).get(LocationsViewModel::class.java)
-    }
+    private val viewModel by viewModels<LocationsViewModel>()
 
     private var locationCount = -1
     private var sortType = LocationsViewModel.SortType.NAME
@@ -27,7 +25,9 @@ class LocationsActivity : SimpleSinglePaneActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
-            Answers.getInstance().logContentView(ContentViewEvent().putContentType("Locations"))
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM_LIST) {
+                param(FirebaseAnalytics.Param.CONTENT_TYPE, "Locations")
+            }
         }
 
         viewModel.locations.observe(this, Observer {

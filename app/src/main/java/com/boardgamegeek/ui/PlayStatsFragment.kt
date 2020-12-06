@@ -1,17 +1,14 @@
 package com.boardgamegeek.ui
 
-import android.content.SharedPreferences
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TableLayout
 import androidx.annotation.StringRes
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
-import androidx.preference.PreferenceManager
 import com.boardgamegeek.R
 import com.boardgamegeek.entities.HIndexEntity
 import com.boardgamegeek.entities.PlayStatsEntity
@@ -21,20 +18,17 @@ import com.boardgamegeek.service.SyncService
 import com.boardgamegeek.ui.dialog.PlayStatsIncludeSettingsDialogFragment
 import com.boardgamegeek.ui.viewmodel.PlayStatsViewModel
 import com.boardgamegeek.ui.widget.PlayStatRow
-import com.boardgamegeek.util.PreferencesUtils
 import kotlinx.android.synthetic.main.fragment_play_stats.*
+import org.jetbrains.anko.support.v4.defaultSharedPreferences
 import java.util.*
 
-class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChangeListener {
+class PlayStatsFragment : Fragment(R.layout.fragment_play_stats) {
     private var isOwnedSynced: Boolean = false
     private var isPlayedSynced: Boolean = false
-    private val viewModel: PlayStatsViewModel by lazy {
-        ViewModelProviders.of(requireActivity()).get(PlayStatsViewModel::class.java)
-    }
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_play_stats, container, false)
-    }
+    private var includeIncompletePlays = false
+    private var includeExpansions = false
+    private var includeAccessories = false
+    private val viewModel by activityViewModels<PlayStatsViewModel>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -44,8 +38,8 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
                     .setTitle(R.string.title_modify_collection_status)
                     .setMessage(R.string.msg_modify_collection_status)
                     .setPositiveButton(R.string.modify) { _, _ ->
-                        context.addSyncStatus(COLLECTION_STATUS_OWN)
-                        context.addSyncStatus(COLLECTION_STATUS_PLAYED)
+                        defaultSharedPreferences.addSyncStatus(COLLECTION_STATUS_OWN)
+                        defaultSharedPreferences.addSyncStatus(COLLECTION_STATUS_PLAYED)
                         SyncService.sync(context, SyncService.FLAG_SYNC_COLLECTION)
                         bindCollectionStatusMessage()
                     }
@@ -55,10 +49,23 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
         }
 
         includeSettingsButton.setOnClickListener {
-            activity?.showFragment(PlayStatsIncludeSettingsDialogFragment.newInstance(), "play_stats_settings_include")
+            showAndSurvive(PlayStatsIncludeSettingsDialogFragment())
         }
 
-        viewModel.getPlays().observe(this, Observer { entity ->
+        viewModel.includeIncomplete.observe(viewLifecycleOwner, Observer {
+            includeIncompletePlays = it ?: false
+            bindAccuracyMessage()
+        })
+        viewModel.includeExpansions.observe(viewLifecycleOwner, Observer {
+            includeExpansions = it ?: false
+            bindAccuracyMessage()
+        })
+        viewModel.includeAccessories.observe(viewLifecycleOwner, Observer {
+            includeAccessories = it ?: false
+            bindAccuracyMessage()
+        })
+
+        viewModel.getPlays().observe(viewLifecycleOwner, Observer { entity ->
             if (entity == null) {
                 showEmpty()
             } else {
@@ -72,7 +79,7 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
                 }
             }
         })
-        viewModel.getPlayers().observe(this, Observer { entity ->
+        viewModel.getPlayers().observe(viewLifecycleOwner, Observer { entity ->
             if (entity == null) return@Observer
             bindPlayerUi(entity)
             playerHIndexInfoView.setOnClickListener {
@@ -85,41 +92,30 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
         })
 
         bindCollectionStatusMessage()
-        bindAccuracyMessage()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        PreferenceManager.getDefaultSharedPreferences(context).registerOnSharedPreferenceChangeListener(this)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        PreferenceManager.getDefaultSharedPreferences(context).unregisterOnSharedPreferenceChangeListener(this)
     }
 
     private fun bindCollectionStatusMessage() {
-        isOwnedSynced = context.isStatusSetToSync(COLLECTION_STATUS_OWN)
-        isPlayedSynced = context.isStatusSetToSync(COLLECTION_STATUS_PLAYED)
+        isOwnedSynced = defaultSharedPreferences.isStatusSetToSync(COLLECTION_STATUS_OWN)
+        isPlayedSynced = defaultSharedPreferences.isStatusSetToSync(COLLECTION_STATUS_PLAYED)
         collectionStatusContainer.isVisible = !isOwnedSynced || !isPlayedSynced
     }
 
     private fun bindAccuracyMessage() {
         val messages = ArrayList<String>(3)
-        if (!PreferencesUtils.logPlayStatsIncomplete(context)) {
-            messages.add(getString(R.string.incomplete_games).toLowerCase())
+        if (!includeIncompletePlays) {
+            messages.add(getString(R.string.incomplete_plays).toLowerCase(Locale.getDefault()))
         }
-        if (!PreferencesUtils.logPlayStatsExpansions(context)) {
-            messages.add(getString(R.string.expansions).toLowerCase())
+        if (!includeExpansions) {
+            messages.add(getString(R.string.expansions).toLowerCase(Locale.getDefault()))
         }
-        if (!PreferencesUtils.logPlayStatsAccessories(context)) {
-            messages.add(getString(R.string.accessories).toLowerCase())
+        if (!includeAccessories) {
+            messages.add(getString(R.string.accessories).toLowerCase(Locale.getDefault()))
         }
         if (messages.isEmpty()) {
             accuracyContainer.visibility = View.GONE
         } else {
             accuracyContainer.visibility = View.VISIBLE
-            accuracyMessage.text = getString(R.string.play_stat_accuracy, messages.formatList(getString(R.string.or).toLowerCase()))
+            accuracyMessage.text = getString(R.string.play_stat_accuracy, messages.formatList(getString(R.string.or).toLowerCase(Locale.getDefault())))
         }
     }
 
@@ -201,12 +197,13 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
         if (entries == null || entries.isEmpty()) {
             table.visibility = View.GONE
         } else {
-            val rankedEntries = entries.mapIndexed { index, pair -> "${pair.first} (#${index + 1})" to pair.second }
+            val rankedEntries = entries.filter { pair -> pair.first.isNotBlank() && pair.second > 0 }.mapIndexed { index, pair -> "${pair.first} (#${index + 1})" to pair.second }
 
-            val nextHighestHIndex = entries.findLast { it.second > hIndex.h }?.second ?: hIndex.h + 1
+            val nextHighestHIndex = entries.findLast { it.second > hIndex.h }?.second
+                    ?: hIndex.h + 1
             val nextLowestHIndex = entries.find { it.second < hIndex.h }?.second ?: hIndex.h - 1
 
-            val prefix = rankedEntries.filter { it.second == nextHighestHIndex }
+            val prefix = rankedEntries.filter { it.second == nextHighestHIndex && it.first.isNotBlank() }
             prefix.forEach {
                 PlayStatRow(requireContext()).apply {
                     setLabel(it.first)
@@ -215,7 +212,7 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
                 }
             }
 
-            val list = rankedEntries.filter { it.second == hIndex.h }
+            val list = rankedEntries.filter { it.second == hIndex.h && it.first.isNotBlank() }
             if (list.isEmpty()) {
                 addDivider(table)
             } else {
@@ -258,13 +255,6 @@ class PlayStatsFragment : Fragment(), SharedPreferences.OnSharedPreferenceChange
             this.layoutParams = TableLayout.LayoutParams(0, 1)
             this.setBackgroundResource(R.color.dark_blue)
             container.addView(this)
-        }
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String) {
-        if (key.startsWith(PreferencesUtils.LOG_PLAY_STATS_PREFIX)) {
-            bindAccuracyMessage()
-            // TODO refresh view model
         }
     }
 }

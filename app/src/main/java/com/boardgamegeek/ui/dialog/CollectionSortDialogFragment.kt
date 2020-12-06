@@ -2,7 +2,6 @@ package com.boardgamegeek.ui.dialog
 
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,25 +10,22 @@ import android.widget.RadioButton
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.children
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.activityViewModels
 import com.boardgamegeek.R
-import com.boardgamegeek.extensions.getSyncPlays
+import com.boardgamegeek.extensions.PREFERENCES_KEY_SYNC_PLAYS
+import com.boardgamegeek.extensions.get
 import com.boardgamegeek.sorter.CollectionSorterFactory
+import com.boardgamegeek.ui.viewmodel.CollectionViewViewModel
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 import kotlinx.android.synthetic.main.dialog_collection_sort.*
+import org.jetbrains.anko.support.v4.defaultSharedPreferences
 import timber.log.Timber
 
 class CollectionSortDialogFragment : DialogFragment() {
     private lateinit var layout: View
-    private var listener: Listener? = null
 
-    interface Listener {
-        fun onSortSelected(sortType: Int)
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        listener = context as Listener?
-        if (listener == null) throw ClassCastException("$context must implement Listener")
-    }
+    private val viewModel by activityViewModels<CollectionViewViewModel>()
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         @SuppressLint("InflateParams")
@@ -44,7 +40,7 @@ class CollectionSortDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val selectedType = arguments?.getInt(KEY_SORT_TYPE) ?: CollectionSorterFactory.TYPE_DEFAULT
 
-        if (!requireContext().getSyncPlays()) {
+        if (defaultSharedPreferences[PREFERENCES_KEY_SYNC_PLAYS, false] != true) {
             hideRadioButtonIfNotSelected(playDateMaxRadioButton, selectedType)
             hideRadioButtonIfNotSelected(playDateMinRadioButton, selectedType)
         }
@@ -56,7 +52,11 @@ class CollectionSortDialogFragment : DialogFragment() {
         radioGroup.setOnCheckedChangeListener { group, checkedId ->
             val sortType = getTypeFromView(group.findViewById(checkedId))
             Timber.d("Sort by $sortType")
-            listener?.onSortSelected(sortType)
+            viewModel.setSort(sortType)
+            FirebaseAnalytics.getInstance(requireContext()).logEvent("Sort") {
+                param(FirebaseAnalytics.Param.CONTENT_TYPE, "Collection")
+                param("SortBy", sortType.toString())
+            }
             dismiss()
         }
     }

@@ -5,21 +5,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.setActionBarCount
 import com.boardgamegeek.ui.viewmodel.PlaysViewModel
-import com.crashlytics.android.answers.Answers
-import com.crashlytics.android.answers.ContentViewEvent
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 import org.jetbrains.anko.startActivity
 
 class BuddyPlaysActivity : SimpleSinglePaneActivity() {
-    private val viewModel by lazy {
-        ViewModelProviders.of(this).get(PlaysViewModel::class.java)
-    }
-
+    private val viewModel by viewModels<PlaysViewModel>()
     private var buddyName = ""
     private var numberOfPlays = -1
 
@@ -33,9 +30,10 @@ class BuddyPlaysActivity : SimpleSinglePaneActivity() {
             supportActionBar?.subtitle = buddyName
         }
         if (savedInstanceState == null) {
-            Answers.getInstance().logContentView(ContentViewEvent()
-                    .putContentType("BuddyPlays")
-                    .putContentId(buddyName))
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM_LIST) {
+                param(FirebaseAnalytics.Param.CONTENT_TYPE, "BuddyPlays")
+                param(FirebaseAnalytics.Param.ITEM_ID, buddyName)
+            }
         }
 
         viewModel.setUsername(buddyName)

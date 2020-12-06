@@ -2,7 +2,6 @@ package com.boardgamegeek.ui.dialog
 
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.Context
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -10,38 +9,31 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.ViewModelProvider
 import com.boardgamegeek.R
-import com.boardgamegeek.extensions.queryLong
-import com.boardgamegeek.extensions.requestFocus
-import com.boardgamegeek.extensions.setAndSelectExistingText
+import com.boardgamegeek.extensions.*
 import com.boardgamegeek.provider.BggContract
 import com.boardgamegeek.provider.BggContract.CollectionViews
-import com.boardgamegeek.util.PreferencesUtils
+import com.boardgamegeek.ui.viewmodel.CollectionViewViewModel
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.logEvent
 import kotlinx.android.synthetic.main.dialog_save_view.*
+import org.jetbrains.anko.support.v4.defaultSharedPreferences
 
 class SaveViewDialogFragment : DialogFragment() {
     lateinit var layout: View
-    private var listener: OnViewSavedListener? = null
     private var name: String = ""
     private var description: String? = null
-
-    interface OnViewSavedListener {
-        fun onInsertRequested(name: String, isDefault: Boolean)
-
-        fun onUpdateRequested(name: String, isDefault: Boolean, viewId: Long)
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        listener = context as? OnViewSavedListener
-        if (listener == null) throw ClassCastException("$context must implement OnViewSavedListener")
-    }
+    private val firebaseAnalytics by lazy { FirebaseAnalytics.getInstance(requireContext()) }
 
     @SuppressLint("InflateParams")
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         layout = LayoutInflater.from(context).inflate(R.layout.dialog_save_view, null)
+        val viewModel = ViewModelProvider(requireActivity()).get(CollectionViewViewModel::class.java)
+        val toast = Toast.makeText(requireContext(), R.string.msg_saved, Toast.LENGTH_SHORT) // TODO improve message
 
         arguments?.let {
             name = it.getString(KEY_NAME) ?: ""
@@ -59,12 +51,22 @@ class SaveViewDialogFragment : DialogFragment() {
                         AlertDialog.Builder(requireContext())
                                 .setTitle(R.string.title_collection_view_name_in_use)
                                 .setMessage(R.string.msg_collection_view_name_in_use)
-                                .setPositiveButton(R.string.update) { _, _ -> listener?.onUpdateRequested(name, isDefault, viewId) }
-                                .setNegativeButton(R.string.create) { _, _ -> listener?.onInsertRequested(name, isDefault) }
+                                .setPositiveButton(R.string.update) { _, _ ->
+                                    toast.show()
+                                    logAction("Update", name)
+                                    viewModel.update(isDefault)
+                                }
+                                .setNegativeButton(R.string.create) { _, _ ->
+                                    toast.show()
+                                    logAction("Insert", name)
+                                    viewModel.insert(name, isDefault)
+                                }
                                 .create()
                                 .show()
                     } else {
-                        listener?.onInsertRequested(name, isDefault)
+                        toast.show()
+                        logAction("Insert", name)
+                        viewModel.insert(name, isDefault)
                     }
                 }
                 .setNegativeButton(R.string.cancel, null)
@@ -75,14 +77,23 @@ class SaveViewDialogFragment : DialogFragment() {
         }
     }
 
+    private fun logAction(action: String, name: String) {
+        firebaseAnalytics.logEvent("DataManipulation") {
+            param(FirebaseAnalytics.Param.CONTENT_TYPE, "CollectionView")
+            param("Action", action)
+            param("Color", name)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return layout
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         nameView.setAndSelectExistingText(name)
-        val viewDefaultId = PreferencesUtils.getViewDefaultId(context)
-        defaultViewCheckBox.isChecked = viewDefaultId != PreferencesUtils.VIEW_ID_COLLECTION && findViewId(name) == viewDefaultId
+        val viewDefaultId = defaultSharedPreferences[CollectionView.PREFERENCES_KEY_DEFAULT_ID, CollectionView.DEFAULT_DEFAULT_ID]
+                ?: CollectionView.DEFAULT_DEFAULT_ID
+        defaultViewCheckBox.isChecked = viewDefaultId != CollectionView.DEFAULT_DEFAULT_ID && findViewId(name) == viewDefaultId
         descriptionView.text = description
     }
 

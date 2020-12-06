@@ -3,23 +3,21 @@ package com.boardgamegeek.ui.adapter
 import androidx.annotation.StringRes
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentPagerAdapter
+import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.boardgamegeek.R
 import com.boardgamegeek.ui.*
 
 class PersonPagerAdapter(
-        fragmentManager: FragmentManager,
         private val activity: FragmentActivity,
         private val id: Int,
         private val name: String,
         private val type: PersonActivity.PersonType
-) : FragmentPagerAdapter(fragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
-    override fun getItem(position: Int): Fragment {
+) : FragmentStateAdapter(activity) {
+    override fun createFragment(position: Int): Fragment {
         return when (position) {
-            0 -> PersonDescriptionFragment.newInstance()
-            1 -> PersonStatsFragment.newInstance()
-            2 -> PersonCollectionFragment.newInstance()
+            0 -> PersonDescriptionFragment()
+            1 -> PersonStatsFragment()
+            2 -> PersonCollectionFragment()
             3 -> {
                 when (type) {
                     PersonActivity.PersonType.ARTIST -> ForumsFragment.newInstanceForArtist(id, name)
@@ -27,11 +25,11 @@ class PersonPagerAdapter(
                     PersonActivity.PersonType.PUBLISHER -> ForumsFragment.newInstanceForPublisher(id, name)
                 }
             }
-            else -> ErrorFragment.newInstance()
+            else -> ErrorFragment()
         }
     }
 
-    override fun getPageTitle(position: Int): CharSequence? {
+    fun getPageTitle(position: Int): CharSequence {
         @StringRes val resId = when (position) {
             0 -> {
                 when (type) {
@@ -49,7 +47,7 @@ class PersonPagerAdapter(
         return activity.getString(resId)
     }
 
-    override fun getCount(): Int {
+    override fun getItemCount(): Int {
         return 4
     }
 }

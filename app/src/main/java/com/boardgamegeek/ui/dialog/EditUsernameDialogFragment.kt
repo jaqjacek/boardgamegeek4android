@@ -9,19 +9,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.requestFocus
 import com.boardgamegeek.ui.viewmodel.BuddyViewModel
 import kotlinx.android.synthetic.main.dialog_edit_text.*
-import org.jetbrains.anko.support.v4.act
 
 class EditUsernameDialogFragment : DialogFragment() {
     private lateinit var layout: View
 
-    private val viewModel: BuddyViewModel by lazy {
-        ViewModelProviders.of(act).get(BuddyViewModel::class.java)
-    }
+    private val viewModel by activityViewModels<BuddyViewModel>()
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         @SuppressLint("InflateParams")
@@ -32,7 +29,8 @@ class EditUsernameDialogFragment : DialogFragment() {
                 .setView(layout)
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.ok) { _, _ ->
-                    viewModel.addUsernameToPlayer(editText.text.trim().toString())
+                    val text = editText.text?.toString()
+                    viewModel.addUsernameToPlayer(text?.trim() ?: "")
                 }
 
         return builder.create().apply {
@@ -46,12 +44,6 @@ class EditUsernameDialogFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         editText.inputType = editText.inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-    }
-
-    companion object {
-        @JvmStatic
-        fun newInstance(): EditUsernameDialogFragment {
-            return EditUsernameDialogFragment()
-        }
+        editTextContainer.hint = getString(R.string.username)
     }
 }

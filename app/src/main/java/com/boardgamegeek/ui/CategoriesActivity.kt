@@ -4,9 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
 import com.boardgamegeek.R
 import com.boardgamegeek.extensions.setActionBarCount
 import com.boardgamegeek.ui.viewmodel.CategoriesViewModel
@@ -15,9 +15,7 @@ class CategoriesActivity : SimpleSinglePaneActivity() {
     private var numberOfCategories = -1
     private var sortBy = CategoriesViewModel.SortType.ITEM_COUNT
 
-    private val viewModel: CategoriesViewModel by lazy {
-        ViewModelProviders.of(this).get(CategoriesViewModel::class.java)
-    }
+    private val viewModel by viewModels<CategoriesViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +29,7 @@ class CategoriesActivity : SimpleSinglePaneActivity() {
         })
     }
 
-    override fun onCreatePane(intent: Intent): Fragment = CategoriesFragment.newInstance()
+    override fun onCreatePane(intent: Intent): Fragment = CategoriesFragment()
 
     override val optionsMenuId = R.menu.categories
 
